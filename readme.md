@@ -1,0 +1,12 @@
+# O QUE PRECISA FAZER
+
+Basicamente mexer no `camera_painter.py` e criar um `main.py`:
+- `__init__()`: a priori não precisa mexer nisso mas talvez conforme implementa precise;
+- `process_frame()`: precisa modificar para desenhar linhas com cores diferentes;
+- `detect_object()`: aqui passamos o frame da webcam e ele precisa fazer limiarização de cores (usando HUE ao inves de RGB) para isolar os objetos. Após isolar é só pegar o centro do objeto e retornar as coordenadas (acho que o jeito mais simples é inscrever o objeto em um retângulo e pegar o centro do retângulo mas da para pegar o centro de massa, por exemplo. Ainda daria para usar funções do próprio oOpenCV mas não sei se pode, lembrar de perguntar);
+- `draw_line_on_canvas()`: alteração semelhante a do `process_frame()`, as linhas precisam ser desenhadas em duas cores;
+- `overlay_canvas()`: mesmo caso do `__init__()`;
+- `main.py`: Na main a gente precisa inicializar os dois processos passando as cores dos objetos (cada processo fica responsável por UM objeto), capturar um frame da webcam e passar para ambos processos. Os processos vão fazer a limiarização, calcular o centro dos objetos, traçar uma linha entre o centro do frame $n$ e o frame $n+1$ e retornar um canvas (uma máscara) mostrando onde deve ficar a linha. Por fim a main vai pegar os dois canvas das linhas e sobrepor eles aos frames da webcam traçando a linha com as cores respectivas.
+
+## RECOMENDAÇÕES:
+Ao ínves de modificar TUDO para lidar com dois objetos e duas cores, cria DOIS processos um para cada objeto e cada um com uma cor. E usa o HUE ao ínves de RGB para não ter trabalho com iluminação.
