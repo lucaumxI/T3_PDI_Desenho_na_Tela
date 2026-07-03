@@ -10,3 +10,13 @@ Basicamente mexer no `camera_painter.py` e criar um `main.py`:
 
 ## RECOMENDAÇÕES:
 Ao ínves de modificar TUDO para lidar com dois objetos e duas cores, cria DOIS processos um para cada objeto e cada um com uma cor. E usa o HUE ao ínves de RGB para não ter trabalho com iluminação.
+
+## Ideias/Implementação feita:
+
+### main.py
+Vou fazer uma função de calibração para definir as cores que serão usadas para limiarizar. Basicamente captura e exibe a webcam desenhando um quadrado centralizado, o usuário deixa o objeto centralizado e confirma. A função então captura esse frame após a confirmação e usa esse frame para:
+1. Separar o fundo do objeto
+2. Extrair a cor do objeto (aqui da pra usar a média dos pixeis do objeto e até usar o desvio padrão daqui mesmo como parametros da limiarização final)
+
+
+### camera_painter.py
