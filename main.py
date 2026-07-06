@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from camera_painter import CameraPainter
 
 def mascaramento(frame, coordenadas_roi):
     # Desempacotamento da tupla
@@ -54,7 +55,7 @@ def mascaramento(frame, coordenadas_roi):
 
 
 def calibracao():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     
     if not cap.isOpened():
         print("Erro ao abrir a câmera.")
@@ -127,4 +128,33 @@ def calibracao():
 # Testando a função:
 if __name__ == "__main__":
     media_cor, desvio_cor = calibracao()
+    cap = cv2.VideoCapture(1)
+    ret, frame = cap.read()
+    if ret:
+        altura, largura = frame.shape[:2]
+        print(f"Resolução da câmera: {largura}x{altura}")
+    camera_painter = CameraPainter(canvas_size = (largura, altura))
+
+    while True:
+        ret, frame = cap.read()
+        if not ret: break
+        
+        # Chama a detecção
+        cx, cy = camera_painter.detect_object(frame, media_cor, desvio_cor, 1)
+        
+        # Verifica se o objeto foi detectado antes de tentar desenhar
+        if cx is not None and cy is not None:
+            # Linha vertical
+            cv2.line(frame, (cx, 0), (cx, frame.shape[0]), (255, 0, 0), 1)
+            # Linha horizontal
+            cv2.line(frame, (0, cy), (frame.shape[1], cy), (255, 0, 0), 1)
+            # Círculo
+            cv2.circle(frame, (cx, cy), 10, (0, 0, 255), -1)
+        
+        # Exibe o frame com o círculo pintado
+        cv2.imshow("Detecao em Tempo Real", frame)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        
     

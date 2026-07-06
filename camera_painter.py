@@ -34,12 +34,33 @@ class CameraPainter:
 
         return display_img
 
-    def detect_object(self, frame):
-        """Detecta um objeto em uma imagem e retorna suas coordenadas (row, col)."""
+    def detect_object(self, frame, media, desvio, fator):
+        # 1. Converte o frame para HSV antes de comparar
+        frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
+        lower = np.clip(media - (fator * desvio), 0, 255)
+        upper = np.clip(media + (fator * desvio), 0, 255)
+        
+        # 2. Aplica a limiarização
+        mask_bool = (frame_hsv >= lower) & (frame_hsv <= upper)
+        mascara = np.all(mask_bool, axis=2).astype(np.uint8) * 255
+        
+        # --- DEBUG: PLOTAR MÁSCARA ---
+        # Resize apenas para exibir maior, se precisar (opcional)
+        cv2.imshow("Debug Mascara", mascara)
+        cv2.waitKey(1) 
+        # -----------------------------
+        
+        indices_colunas = np.where(np.sum(mascara // 255, axis=0) > 0)[0]
+        indices_linhas = np.where(np.sum(mascara // 255, axis=1) > 0)[0]
 
-        coords = ...
-
-        return coords
+        # 3. Proteção contra o objeto sumir da tela
+        if indices_colunas.size > 0 and indices_linhas.size > 0:
+            cx = int(np.mean(indices_colunas))
+            cy = int(np.mean(indices_linhas))
+            return cx, cy
+        else:
+            return None, None
 
     def draw_line_on_canvas(self, canvas, p1, p2, color=(0, 255, 0), thickness=2):
         """Desenha uma linha entre os pontos p1 e p2 no canvas."""
