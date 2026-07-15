@@ -51,11 +51,11 @@ class CameraPainter:
         cv2.waitKey(1) 
         # -----------------------------
         
-        indices_colunas = np.where(np.sum(mascara // 255, axis=0) > 0)[0]
-        indices_linhas = np.where(np.sum(mascara // 255, axis=1) > 0)[0]
+        indices_linhas, indices_colunas = np.where(mascara == 255)
 
         # 3. Proteção contra o objeto sumir da tela
-        if indices_colunas.size > 0 and indices_linhas.size > 0:
+        if indices_colunas.size > 50 and indices_linhas.size > 50:
+            # A média de TODAS as posições x e y ativas resulta no centro de massa real
             cx = int(np.mean(indices_colunas))
             cy = int(np.mean(indices_linhas))
             return cx, cy

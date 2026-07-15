@@ -144,23 +144,46 @@ if __name__ == "__main__":
         ret, frame = cap.read()
         if not ret: break
         
-        # Chama a detecção do objeto 1 e desenha a linha vermelha no canvas dele
+    # Fator de suavização (0.0 a 1.0). Quanto menor, mais suave e com mais atraso.
+        alpha = 0.3 
+
+        # --- OBJETO 1 ---
         cx1, cy1 = painter_1.detect_object(frame, media_1, desvio_1, 1)
         if cx1 is not None and cy1 is not None:
-            ponto_1 = (cx1, cy1)
             if painter_1.prev_p is not None:
-                painter_1.draw_line_on_canvas(painter_1.canvas, painter_1.prev_p, ponto_1, color=(0, 0, 255))
-            painter_1.prev_p = ponto_1
+                prev_cx, prev_cy = painter_1.prev_p
+                
+                # Cálculo do EMA
+                cx1_suave = int(alpha * cx1 + (1 - alpha) * prev_cx)
+                cy1_suave = int(alpha * cy1 + (1 - alpha) * prev_cy)
+                ponto_1_suave = (cx1_suave, cy1_suave)
+                
+                painter_1.draw_line_on_canvas(painter_1.canvas, painter_1.prev_p, ponto_1_suave, color=(0, 0, 255))
+                # Atualiza com o ponto suavizado para o próximo cálculo
+                painter_1.prev_p = ponto_1_suave
+            else:
+                # Primeiro frame, não há histórico para suavizar
+                painter_1.prev_p = (cx1, cy1)
         else:
             painter_1.prev_p = None
-        
-        # Chama a detecção do objeto 2 e desenha a linha azul no canvas dele
+
+        # --- OBJETO 2 ---
         cx2, cy2 = painter_2.detect_object(frame, media_2, desvio_2, 1)
         if cx2 is not None and cy2 is not None:
-            ponto_2 = (cx2, cy2)
             if painter_2.prev_p is not None:
-                painter_2.draw_line_on_canvas(painter_2.canvas, painter_2.prev_p, ponto_2, color=(255, 0, 0))
-            painter_2.prev_p = ponto_2
+                prev_cx, prev_cy = painter_2.prev_p
+                
+                # Cálculo do EMA
+                cx2_suave = int(alpha * cx2 + (1 - alpha) * prev_cx)
+                cy2_suave = int(alpha * cy2 + (1 - alpha) * prev_cy)
+                ponto_2_suave = (cx2_suave, cy2_suave)
+                
+                painter_2.draw_line_on_canvas(painter_2.canvas, painter_2.prev_p, ponto_2_suave, color=(255, 0, 0))
+                # Atualiza com o ponto suavizado para o próximo cálculo
+                painter_2.prev_p = ponto_2_suave
+            else:
+                # Primeiro frame, não há histórico para suavizar
+                painter_2.prev_p = (cx2, cy2)
         else:
             painter_2.prev_p = None
         
