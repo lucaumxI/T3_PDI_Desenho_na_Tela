@@ -64,11 +64,6 @@ class CameraPainter:
 
     def draw_line_on_canvas(self, canvas, p1, p2, color=(0, 255, 0), thickness=2):
         """Desenha uma linha entre os pontos p1 e p2 no canvas."""
-
-        # O OpenCV espera as coordenadas no formato (x, y), por isso invertemos a ordem
-        # (row, col) -> (col, row)
-        p1 = p1[::-1]
-        p2 = p2[::-1]
         cv2.line(canvas, p1, p2, color, thickness)
 
     def overlay_canvas(self, base_img, canvas):

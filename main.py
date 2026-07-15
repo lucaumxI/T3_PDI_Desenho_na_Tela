@@ -12,24 +12,19 @@ def mascaramento(frame, coordenadas_roi):
     # Extração do ROI do frame original
     roi_bgr = frame[y_min:y_max, x_min:x_max]
     roi_hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
-    roi_cinza = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
 
-    # Borra para minimizar texturas e extraí as bordas
-    roi_blur = cv2.GaussianBlur(roi_cinza, (5, 5), 0)
-    bordas = cv2.Canny(roi_blur, 50, 150)
+    # Borra para minimizar texturas antes do flood fill
+    roi_hsv_blur = cv2.GaussianBlur(roi_hsv, (5, 5), 0)
 
-    # Usa um filtro de dilatação para conectar bordas próximas desconexas
-    kernel = np.ones((3, 3), np.uint8)
-    bordas_fechadas = cv2.dilate(bordas, kernel, iterations=1)
+    # Faz um flood fill a partir do ponto central do ROI, expandindo enquanto a cor for parecida
+    h, w = roi_bgr.shape[:2]
+    semente = (w // 2, h // 2)
+    mascara_flood = np.zeros((h + 2, w + 2), dtype=np.uint8)
+    flags = 4 | cv2.FLOODFILL_MASK_ONLY | cv2.FLOODFILL_FIXED_RANGE | (255 << 8)
+    cv2.floodFill(roi_hsv_blur.copy(), mascara_flood, semente, 0, (10, 40, 40), (10, 40, 40), flags)
 
-    # Transforma as bordas em contornos, pega o maior contorno (em comprimento) e preenche ele com branco
-    contornos, _ = cv2.findContours(bordas_fechadas, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    mascara_roi = np.zeros(roi_cinza.shape, dtype=np.uint8)
-    if contornos:
-        maior_contorno = max(contornos, key=cv2.contourArea)
-        forma_fechada = cv2.convexHull(maior_contorno)
-        
-        cv2.drawContours(mascara_roi, [forma_fechada], -1, 255, thickness=-1)
+    # Remove a borda extra de 1px exigida pelo floodFill
+    mascara_roi = mascara_flood[1:-1, 1:-1].copy()
 
     print("O objeto está bem destacado? Aperte 's' para Sim ou 'n' para Não.")
     while True:
@@ -55,7 +50,7 @@ def mascaramento(frame, coordenadas_roi):
 
 
 def calibracao():
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
         print("Erro ao abrir a câmera.")
@@ -85,6 +80,9 @@ def calibracao():
         
         # Desenha o quadrado verde: imagem, pt1, pt2, cor(B,G,R), espessura
         cv2.rectangle(frame_exibicao, ponto_inicial, ponto_final, (0, 255, 0), 2)
+        
+        # Desenha o ponto central, como referência de onde posicionar o objeto
+        cv2.circle(frame_exibicao, (w // 2, h // 2), 6, (0, 255, 0), -1)
         
         # Coloca um texto de instrução na tela
         cv2.putText(frame_exibicao, "Posicione o objeto e aperte 'c' para capturar", 
@@ -127,34 +125,51 @@ def calibracao():
 
 # Testando a função:
 if __name__ == "__main__":
-    media_cor, desvio_cor = calibracao()
-    cap = cv2.VideoCapture(1)
+    print("Calibrando o objeto 1 (linha vermelha).")
+    media_1, desvio_1 = calibracao()
+    print("Calibrando o objeto 2 (linha azul).")
+    media_2, desvio_2 = calibracao()
+
+    cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     if ret:
         altura, largura = frame.shape[:2]
         print(f"Resolução da câmera: {largura}x{altura}")
-    camera_painter = CameraPainter(canvas_size = (largura, altura))
+
+    # Um CameraPainter para cada objeto, cada um com seu próprio canvas
+    painter_1 = CameraPainter(canvas_size=(altura, largura))
+    painter_2 = CameraPainter(canvas_size=(altura, largura))
 
     while True:
         ret, frame = cap.read()
         if not ret: break
         
-        # Chama a detecção
-        cx, cy = camera_painter.detect_object(frame, media_cor, desvio_cor, 1)
+        # Chama a detecção do objeto 1 e desenha a linha vermelha no canvas dele
+        cx1, cy1 = painter_1.detect_object(frame, media_1, desvio_1, 1)
+        if cx1 is not None and cy1 is not None:
+            ponto_1 = (cx1, cy1)
+            if painter_1.prev_p is not None:
+                painter_1.draw_line_on_canvas(painter_1.canvas, painter_1.prev_p, ponto_1, color=(0, 0, 255))
+            painter_1.prev_p = ponto_1
+        else:
+            painter_1.prev_p = None
         
-        # Verifica se o objeto foi detectado antes de tentar desenhar
-        if cx is not None and cy is not None:
-            # Linha vertical
-            cv2.line(frame, (cx, 0), (cx, frame.shape[0]), (255, 0, 0), 1)
-            # Linha horizontal
-            cv2.line(frame, (0, cy), (frame.shape[1], cy), (255, 0, 0), 1)
-            # Círculo
-            cv2.circle(frame, (cx, cy), 10, (0, 0, 255), -1)
+        # Chama a detecção do objeto 2 e desenha a linha azul no canvas dele
+        cx2, cy2 = painter_2.detect_object(frame, media_2, desvio_2, 1)
+        if cx2 is not None and cy2 is not None:
+            ponto_2 = (cx2, cy2)
+            if painter_2.prev_p is not None:
+                painter_2.draw_line_on_canvas(painter_2.canvas, painter_2.prev_p, ponto_2, color=(255, 0, 0))
+            painter_2.prev_p = ponto_2
+        else:
+            painter_2.prev_p = None
         
-        # Exibe o frame com o círculo pintado
-        cv2.imshow("Detecao em Tempo Real", frame)
+        # Sobrepõe os dois canvas no frame
+        frame_com_desenho_1 = painter_1.overlay_canvas(frame, painter_1.canvas)
+        display_img = painter_2.overlay_canvas(frame_com_desenho_1, painter_2.canvas)
+        
+        # Exibe o frame com as linhas pintadas
+        cv2.imshow("Detecao em Tempo Real", display_img)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        
-    
